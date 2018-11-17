@@ -1,4 +1,4 @@
-package de.p72b.mocklation.main;
+package de.p72b.mocklation.main.mode;
 
 import android.Manifest;
 import android.app.Activity;
@@ -23,12 +23,12 @@ import java.util.List;
 
 import de.p72b.mocklation.BuildConfig;
 import de.p72b.mocklation.R;
+import de.p72b.mocklation.main.IMockServiceInteractor;
 import de.p72b.mocklation.service.location.MockLocationService;
 import de.p72b.mocklation.service.setting.ISetting;
 import de.p72b.mocklation.util.AppUtil;
 import de.p72b.mocklation.util.Logger;
 
-@Deprecated
 public class MockServiceInteractor implements IMockServiceInteractor {
 
     static final int PERMISSIONS_MOCKING = 115;
