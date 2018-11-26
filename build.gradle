@@ -8,7 +8,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.google.gms:google-services:4.0.1'
+        classpath 'com.google.gms:google-services:4.1.0'
         classpath 'com.android.tools.build:gradle:3.2.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
@@ -29,8 +29,8 @@ task clean(type: Delete) {
 
 ext {
     // version numbers
-    appVersionName = '1.1.0'
-    appVersionCode = 17
+    appVersionName = '2.0.0'
+    appVersionCode = 18
 
     appMinSdk = 21
     appCompileSdk = 27
