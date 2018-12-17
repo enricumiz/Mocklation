@@ -22,13 +22,11 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.maps.android.data.Geometry;
 import com.google.maps.android.data.geojson.GeoJsonPoint;
-import com.google.maps.android.geometry.Point;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -55,8 +53,7 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
-public class MockLocationService extends Service implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener {
+public class MockLocationService extends Service {
 
     private static final String TAG = MockLocationService.class.getSimpleName();
     public static final int NOTIFICATION_ID = 909;
@@ -69,8 +66,6 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     private static final String NOTIFICATION_CHANNEL_ID = "MOCK_LOCATION_NOTIFICATION";
     private static final String MOCKLOCATION_PROVIDER_NAME = "gps";
 
-    @Nullable
-    private GoogleApiClient mGoogleApiClient;
     private ISetting mSetting;
     private GpsLocationListener mGpsLocationListener;
     private LocationManager mLocationManager;
@@ -85,6 +80,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     private LocationItem mLocationItem;
     private IAnalyticsService mAnalyticsService;
     private String mCachedLocationId = null;
+    private FusedLocationProviderClient mFusedLocationProviderClient;
     private final BroadcastReceiver mLocalAppBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
@@ -135,12 +131,10 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
         mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         mSetting = (Setting) AppServices.getService(AppServices.SETTINGS);
         mDb = AppDatabase.getLocationsDb().build();
+        mFusedLocationProviderClient =
+                LocationServices.getFusedLocationProviderClient(getApplicationContext());
 
-        mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext())
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .addApi(LocationServices.API)
-                .build();
+        checkPermissionAndStart();
     }
 
     @Nullable
@@ -150,30 +144,11 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     }
 
     @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        Logger.d(TAG, "onConnected");
-        checkPermissionAndStart();
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Logger.d(TAG, "onConnectionSuspended");
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Logger.d(TAG, "onConnectionFailed");
-    }
-
-    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.d(TAG, "onStartCommand");
 
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
-            checkPermissionAndStart();
-        } else {
-            mGoogleApiClient.connect();
-        }
+        // TODO: check location permission!
+        checkPermissionAndStart();
         AppUtil.registerLocalBroadcastReceiver(
                 getApplicationContext(),
                 mLocalAppBroadcastReceiver,
@@ -191,11 +166,6 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
         dismissNotification();
 
         reset();
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
-            Logger.d(TAG, "do mGoogleApiClient disconnect");
-            mGoogleApiClient.disconnect();
-        }
-
         mDisposables.clear();
 
         AppUtil.unregisterLocalBroadcastReceiver(getApplicationContext(),
@@ -347,7 +317,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     @SuppressWarnings("MissingPermission")
     private void play() {
         mAnalyticsService.trackEvent(AnalyticsService.Event.START_MOCK_LOCATION_SERVICE);
-        LocationServices.FusedLocationApi.setMockMode(mGoogleApiClient, true);
+        mFusedLocationProviderClient.setMockMode(true);
 
         mGpsLocationListener = new GpsLocationListener();
 
@@ -362,7 +332,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     @SuppressWarnings("MissingPermission")
     private void pause() {
         mAnalyticsService.trackEvent(AnalyticsService.Event.PAUSE_MOCK_LOCATION_SERVICE);
-        LocationServices.FusedLocationApi.setMockMode(mGoogleApiClient, false);
+        mFusedLocationProviderClient.setMockMode(false);
 
         mLocationManager.removeUpdates(mGpsLocationListener);
         mLocationManager.removeTestProvider(MOCKLOCATION_PROVIDER_NAME);
@@ -397,7 +367,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
 
     private class LocationItemObserver implements Consumer<LocationItem> {
         @Override
-        public void accept(LocationItem locationItem) throws Exception {
+        public void accept(LocationItem locationItem) {
             mDisposables.remove(mDisposableFindByCode);
             mLocationItem = locationItem;
             if (mLocationItem == null) {
@@ -439,7 +409,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
             mLocationManager.setTestProviderEnabled(MOCKLOCATION_PROVIDER_NAME, true);
             mLocationManager.setTestProviderStatus(MOCKLOCATION_PROVIDER_NAME, LocationProvider.AVAILABLE, null, System.currentTimeMillis());
             mLocationManager.setTestProviderLocation(MOCKLOCATION_PROVIDER_NAME, location);
-            LocationServices.FusedLocationApi.setMockLocation(mGoogleApiClient, location);
+            mFusedLocationProviderClient.setMockLocation(location);
         }
 
         @Override
