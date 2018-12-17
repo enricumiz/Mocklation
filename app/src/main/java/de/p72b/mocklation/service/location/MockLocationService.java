@@ -1,6 +1,5 @@
 package de.p72b.mocklation.service.location;
 
-import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -42,7 +41,6 @@ import de.p72b.mocklation.notification.NotificationBroadcastReceiver;
 import de.p72b.mocklation.service.AppServices;
 import de.p72b.mocklation.service.analytics.AnalyticsService;
 import de.p72b.mocklation.service.analytics.IAnalyticsService;
-import de.p72b.mocklation.service.permission.IPermissionService;
 import de.p72b.mocklation.service.room.AppDatabase;
 import de.p72b.mocklation.service.room.LocationItem;
 import de.p72b.mocklation.service.setting.ISetting;
@@ -58,10 +56,9 @@ import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
 public class MockLocationService extends Service implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, IPermissionService.OnPermissionChanged {
+        GoogleApiClient.OnConnectionFailedListener {
 
     private static final String TAG = MockLocationService.class.getSimpleName();
-    public static final int PERMISSION_REQUEST_CODE = 97;
     public static final int NOTIFICATION_ID = 909;
     public static final String NOTIFICATION_ACTION_PAUSE = "NOTIFICATION_ACTION_PAUSE";
     public static final String NOTIFICATION_ACTION_PLAY = "NOTIFICATION_ACTION_PLAY";
@@ -74,7 +71,6 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
 
     @Nullable
     private GoogleApiClient mGoogleApiClient;
-    private IPermissionService mPermissions;
     private ISetting mSetting;
     private GpsLocationListener mGpsLocationListener;
     private LocationManager mLocationManager;
@@ -134,9 +130,7 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     @Override
     public void onCreate() {
         super.onCreate();
-        mPermissions = (IPermissionService) AppServices.getService(AppServices.PERMISSIONS);
         mAnalyticsService = (IAnalyticsService) AppServices.getService(AppServices.ANALYTICS);
-        mPermissions.subscribeToPermissionChanges(this);
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         mSetting = (Setting) AppServices.getService(AppServices.SETTINGS);
@@ -172,27 +166,10 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     }
 
     @Override
-    public void onPermissionChanged(String permission, boolean granted, int code) {
-        Logger.d(TAG, "onPermissionChanged permission: " + permission + " granted: " + granted);
-        if (!Manifest.permission.ACCESS_FINE_LOCATION.equals(permission) || PERMISSION_REQUEST_CODE != code) {
-            return;
-        }
-        if (granted) {
-            // lets start listening on location changes again using fused location
-
-        }
-    }
-
-    @Override
-    public void onPermissionsChanged(int requestCode, String[] permissions, int[] grantResults) {
-
-    }
-
-    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.d(TAG, "onStartCommand");
 
-        if (mGoogleApiClient.isConnected()) {
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
             checkPermissionAndStart();
         } else {
             mGoogleApiClient.connect();
@@ -218,7 +195,6 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
             Logger.d(TAG, "do mGoogleApiClient disconnect");
             mGoogleApiClient.disconnect();
         }
-        mPermissions.unSubscribeToPermissionChanges(this);
 
         mDisposables.clear();
 
@@ -231,15 +207,9 @@ public class MockLocationService extends Service implements GoogleApiClient.Conn
     @SuppressWarnings("MissingPermission")
     private void checkPermissionAndStart() {
         final String code = mSetting.getMockLocationItemCode();
-        Logger.d(TAG, "code: " + code + " hasPermission: " + mPermissions.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION));
-        if (mPermissions.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                && code != null) {
-            requestLocationItem(code);
+        if (code == null) {
+            return;
         }
-    }
-
-    private void requestLocationItem(String code) {
-        Logger.d(TAG, "requestLocationItem");
         mDisposableFindByCode = mDb.locationItemDao().findByCode(code)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
