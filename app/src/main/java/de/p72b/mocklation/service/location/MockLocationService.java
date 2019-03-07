@@ -17,10 +17,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.TaskStackBuilder;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -395,7 +395,7 @@ public class MockLocationService extends Service {
             final Location location = new Location(MOCKLOCATION_PROVIDER_NAME);
             location.setLatitude(nextLatLng.latitude);
             location.setLongitude(nextLatLng.longitude);
-            location.setAccuracy(6);
+            location.setAccuracy(45);
             location.setTime(Calendar.getInstance().getTimeInMillis());
             location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
 

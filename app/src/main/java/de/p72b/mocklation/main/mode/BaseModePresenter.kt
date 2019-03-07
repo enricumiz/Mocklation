@@ -1,10 +1,10 @@
 package de.p72b.mocklation.main.mode
 
-import android.support.design.widget.Snackbar
-import android.support.v4.app.DialogFragment
-import android.support.v4.app.FragmentActivity
-import android.support.v4.app.FragmentManager
 import android.view.View
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import de.p72b.mocklation.R
 import de.p72b.mocklation.dialog.EditLocationItemDialog
